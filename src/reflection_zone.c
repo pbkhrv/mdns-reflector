@@ -83,11 +83,13 @@ struct reflection_if *new_reflection_if(unsigned int ifindex, const char *ifname
     rif->recv_fd = -1;
     rif->send_fd = -1;
     rif->ifindex = ifindex;
+    rif->zone_ifindex = -1;
     snprintf(rif->ifname, IF_NAMESIZE, "%s", ifname);
     rif->zone = rz;
     if (rz) {
         rif->next = rz->first_if;
         rz->first_if = rif;
+        rif->zone_ifindex = (long int)rz->nifs;
         rz->nifs++;
     }
     return rif;

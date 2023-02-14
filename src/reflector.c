@@ -313,7 +313,7 @@ int run_event_loop(struct options *options) {
         for (struct reflection_if *rif = rz->first_if; rif; rif = rif->next) {
             // Default mode: send to all interfaces
             // Unidirectional mode: send to all except the first interface
-            if (!options->unidirectional || (options->unidirectional && rif != rz->first_if)) {
+            if (!options->unidirectional || (options->unidirectional && rif->zone_ifindex > 0)) {
                 rif->send_fd = new_send_socket((struct sockaddr_storage *) &sa6, sizeof(sa6), rif->ifindex);
                 if (rif->send_fd < 0) {
                     log_err(LOG_ERR, "Failed to setup IPv6 send socket for interface %s", rif->ifname);
@@ -323,7 +323,7 @@ int run_event_loop(struct options *options) {
 
             // Default mode: listen on all interfaces
             // Unidirectional mode: listen on the first interface only
-            if (!options->unidirectional || (options->unidirectional && rif == rz->first_if)) {
+            if (!options->unidirectional || (options->unidirectional && rif->zone_ifindex == 0)) {
                 rif->recv_fd = new_recv_socket((struct sockaddr_storage *) &sa6, sizeof(sa6), rif->ifindex);
                 if (rif->recv_fd < 0) {
                     log_err(LOG_ERR, "Failed to setup IPv6 recv socket for interface %s", rif->ifname);

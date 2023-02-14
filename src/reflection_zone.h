@@ -29,6 +29,7 @@ struct reflection_if {
     struct reflection_zone *zone;
     char ifname[IF_NAMESIZE];
     struct reflection_if *next;
+    long int zone_ifindex;
 };
 
 struct reflection_zone {
