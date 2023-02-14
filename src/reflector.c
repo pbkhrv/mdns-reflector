@@ -455,7 +455,7 @@ int run_event_loop(struct options *options) {
                     log_err(LOG_ERR, "recvfrom");
                     goto end;
                 }
-                if (options->log_level <= LOG_INFO) {
+                if (options->log_level >= LOG_INFO) {
                     snprintf(peer_addr_str, sizeof(peer_addr_str), "%s", sockaddr_storage_to_string(&peer_addr));
                     log_msg(LOG_INFO, "received %u bytes from interface %s with source IP %s",
                             recv_size, rif->ifname, peer_addr_str);
