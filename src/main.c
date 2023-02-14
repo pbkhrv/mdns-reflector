@@ -38,7 +38,7 @@ static int parse_args(const char *program, int argc, char *argv[], struct option
     strcpy(options->pid_file, DEFAULT_PID_FILE);
     options->log_level = LOG_WARNING;
     int ch;
-    while ((ch = getopt(argc, argv, "hdfp:n64l:")) != -1) {
+    while ((ch = getopt(argc, argv, "hdfp:n64l:u")) != -1) {
         switch (ch) {
             case 'h':
                 options->help = true;
