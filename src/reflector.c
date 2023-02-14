@@ -311,34 +311,49 @@ int run_event_loop(struct options *options) {
     };
     for (const struct reflection_zone *rz = options->rz_list6; rz; rz = rz->next) {
         for (struct reflection_if *rif = rz->first_if; rif; rif = rif->next) {
-            rif->send_fd = new_send_socket((struct sockaddr_storage *) &sa6, sizeof(sa6), rif->ifindex);
-            if (rif->send_fd < 0) {
-                log_err(LOG_ERR, "Failed to setup IPv6 send socket for interface %s", rif->ifname);
-                goto end;
+            // Default mode: send to all interfaces
+            // Unidirectional mode: send to all except the first interface
+            if (!options->unidirectional || (options->unidirectional && rif != rz->first_if)) {
+                rif->send_fd = new_send_socket((struct sockaddr_storage *) &sa6, sizeof(sa6), rif->ifindex);
+                if (rif->send_fd < 0) {
+                    log_err(LOG_ERR, "Failed to setup IPv6 send socket for interface %s", rif->ifname);
+                    goto end;
+                }
             }
-            rif->recv_fd = new_recv_socket((struct sockaddr_storage *) &sa6, sizeof(sa6), rif->ifindex);
-            if (rif->recv_fd < 0) {
-                log_err(LOG_ERR, "Failed to setup IPv6 recv socket for interface %s", rif->ifname);
-                goto end;
+            else {
+                rif->send_fd = -1;
             }
-#if defined(EVFILT_READ)
-            EV_SET(&ev, rif->recv_fd, EVFILT_READ, EV_ADD, 0, 0, rif);
-            if (kevent(kq, &ev, 1, NULL, 0, NULL) == -1) {
-                log_err(LOG_ERR, "kevent");
-                goto end;
+
+            // Default mode: listen on all interfaces
+            // Unidirectional mode: listen on the first interface only
+            if (!options->unidirectional || (options->unidirectional && rif == rz->first_if)) {
+                rif->recv_fd = new_recv_socket((struct sockaddr_storage *) &sa6, sizeof(sa6), rif->ifindex);
+                if (rif->recv_fd < 0) {
+                    log_err(LOG_ERR, "Failed to setup IPv6 recv socket for interface %s", rif->ifname);
+                    goto end;
+                }
+    #if defined(EVFILT_READ)
+                EV_SET(&ev, rif->recv_fd, EVFILT_READ, EV_ADD, 0, 0, rif);
+                if (kevent(kq, &ev, 1, NULL, 0, NULL) == -1) {
+                    log_err(LOG_ERR, "kevent");
+                    goto end;
+                }
+    #elif defined(EPOLLIN)
+                ev.data.ptr = rif;
+                if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, rif->recv_fd, &ev) == -1) {
+                    log_err(LOG_ERR, "epoll_ctl EPOLL_CTL_ADD");
+                    goto end;
+                }
+    #endif
+                sa_group6.sin6_scope_id = rif->ifindex;
+                if (mcast_join(rif->recv_fd, (struct sockaddr_storage *) &sa_group6, sizeof(sa_group6), rif->ifindex) <
+                    0) {
+                    log_err(LOG_ERR, "Failed to join interface %s to IPv6 multicast group", rif->ifname);
+                    goto end;
+                }
             }
-#elif defined(EPOLLIN)
-            ev.data.ptr = rif;
-            if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, rif->recv_fd, &ev) == -1) {
-                log_err(LOG_ERR, "epoll_ctl EPOLL_CTL_ADD");
-                goto end;
-            }
-#endif
-            sa_group6.sin6_scope_id = rif->ifindex;
-            if (mcast_join(rif->recv_fd, (struct sockaddr_storage *) &sa_group6, sizeof(sa_group6), rif->ifindex) <
-                0) {
-                log_err(LOG_ERR, "Failed to join interface %s to IPv6 multicast group", rif->ifname);
-                goto end;
+            else {
+                rif->recv_fd = -1;
             }
         }
     }
@@ -356,33 +371,48 @@ int run_event_loop(struct options *options) {
     };
     for (const struct reflection_zone *rz = options->rz_list4; rz; rz = rz->next) {
         for (struct reflection_if *rif = rz->first_if; rif; rif = rif->next) {
-            rif->send_fd = new_send_socket((struct sockaddr_storage *) &sa4, sizeof(sa4), rif->ifindex);
-            if (rif->send_fd < 0) {
-                log_err(LOG_ERR, "Failed to setup IPv4 send socket for interface %s", rif->ifname);
-                goto end;
+            // Default mode: send to all interfaces
+            // Unidirectional mode: send to all except the first interface
+            if (!options->unidirectional || (options->unidirectional && rif != rz->first_if)) {
+                rif->send_fd = new_send_socket((struct sockaddr_storage *) &sa4, sizeof(sa4), rif->ifindex);
+                if (rif->send_fd < 0) {
+                    log_err(LOG_ERR, "Failed to setup IPv4 send socket for interface %s", rif->ifname);
+                    goto end;
+                }
             }
-            rif->recv_fd = new_recv_socket((struct sockaddr_storage *) &sa4, sizeof(sa4), rif->ifindex);
-            if (rif->recv_fd < 0) {
-                log_err(LOG_ERR, "Failed to setup IPv4 recv socket for interface %s", rif->ifname);
-                goto end;
+            else {
+                rif->send_fd = -1;
             }
-#if defined(EVFILT_READ)
-            EV_SET(&ev, rif->recv_fd, EVFILT_READ, EV_ADD, 0, 0, rif);
-            if (kevent(kq, &ev, 1, NULL, 0, NULL) == -1) {
-                log_err(LOG_ERR, "kevent");
-                goto end;
+
+            // Default mode: listen on all interfaces
+            // Unidirectional mode: listen on the first interface only
+            if (!options->unidirectional || (options->unidirectional && rif == rz->first_if)) {
+                rif->recv_fd = new_recv_socket((struct sockaddr_storage *) &sa4, sizeof(sa4), rif->ifindex);
+                if (rif->recv_fd < 0) {
+                    log_err(LOG_ERR, "Failed to setup IPv4 recv socket for interface %s", rif->ifname);
+                    goto end;
+                }
+    #if defined(EVFILT_READ)
+                EV_SET(&ev, rif->recv_fd, EVFILT_READ, EV_ADD, 0, 0, rif);
+                if (kevent(kq, &ev, 1, NULL, 0, NULL) == -1) {
+                    log_err(LOG_ERR, "kevent");
+                    goto end;
+                }
+    #elif defined(EPOLLIN)
+                ev.data.ptr = rif;
+                if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, rif->recv_fd, &ev) == -1) {
+                    log_err(LOG_ERR, "epoll_ctl EPOLL_CTL_ADD");
+                    goto end;
+                }
+    #endif
+                if (mcast_join(rif->recv_fd, (struct sockaddr_storage *) &sa_group4, sizeof(sa_group4), rif->ifindex) <
+                    0) {
+                    log_err(LOG_ERR, "Failed to join interface %s to IPv4 multicast group", rif->ifname);
+                    goto end;
+                }
             }
-#elif defined(EPOLLIN)
-            ev.data.ptr = rif;
-            if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, rif->recv_fd, &ev) == -1) {
-                log_err(LOG_ERR, "epoll_ctl EPOLL_CTL_ADD");
-                goto end;
-            }
-#endif
-            if (mcast_join(rif->recv_fd, (struct sockaddr_storage *) &sa_group4, sizeof(sa_group4), rif->ifindex) <
-                0) {
-                log_err(LOG_ERR, "Failed to join interface %s to IPv4 multicast group", rif->ifname);
-                goto end;
+            else {
+                rif->recv_fd = -1;
             }
         }
     }
@@ -481,14 +511,18 @@ int run_event_loop(struct options *options) {
     end:
     for (const struct reflection_zone *rz = options->rz_list6; rz; rz = rz->next) {
         for (struct reflection_if *rif = rz->first_if; rif; rif = rif->next) {
-            close(rif->recv_fd);
-            close(rif->send_fd);
+            if (rif->recv_fd > -1)
+                close(rif->recv_fd);
+            if (rif->send_fd > -1)
+                close(rif->send_fd);
         }
     }
     for (const struct reflection_zone *rz = options->rz_list4; rz; rz = rz->next) {
         for (struct reflection_if *rif = rz->first_if; rif; rif = rif->next) {
-            close(rif->recv_fd);
-            close(rif->send_fd);
+            if (rif->recv_fd > -1)
+                close(rif->recv_fd);
+            if (rif->send_fd > -1)
+                close(rif->send_fd);
         }
     }
 #if defined(EVFILT_READ)

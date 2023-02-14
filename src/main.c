@@ -80,6 +80,9 @@ static int parse_args(const char *program, int argc, char *argv[], struct option
                 }
                 break;
             }
+            case 'u':
+                options->unidirectional = true;
+                break;
             case '?':
             default:
                 errno = EINVAL;
@@ -176,6 +179,7 @@ static void usage(const char *program, FILE *file) {
     fprintf(file, " -p\tPID file path (default is %s)\n", DEFAULT_PID_FILE);
     fprintf(file, " -4\tIPV4 only mode (disable IPv6 support)\n");
     fprintf(file, " -6\tIPV6 only mode (disable IPv4 support)\n");
+    fprintf(file, " -u\tunidirectional mode: reflect from first interface in a zone to all others in the same zone\n");
     fprintf(file, " -h\tshow this help\n");
     fprintf(file, "\n");
     fprintf(file, "See https://github.com/vfreex/mdns-reflector for updates, bug reports, and answers\n");

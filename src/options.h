@@ -32,5 +32,6 @@ struct options {
     bool ipv4_only;
     int log_level;
     struct reflection_zone *rz_list6, *rz_list4;
+    bool unidirectional;
 };
 #endif //MDNS_REFLECTOR_OPTIONS_H
