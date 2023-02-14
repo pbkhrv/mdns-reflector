@@ -320,9 +320,6 @@ int run_event_loop(struct options *options) {
                     goto end;
                 }
             }
-            else {
-                rif->send_fd = -1;
-            }
 
             // Default mode: listen on all interfaces
             // Unidirectional mode: listen on the first interface only
@@ -352,9 +349,6 @@ int run_event_loop(struct options *options) {
                     goto end;
                 }
             }
-            else {
-                rif->recv_fd = -1;
-            }
         }
     }
 
@@ -379,9 +373,6 @@ int run_event_loop(struct options *options) {
                     log_err(LOG_ERR, "Failed to setup IPv4 send socket for interface %s", rif->ifname);
                     goto end;
                 }
-            }
-            else {
-                rif->send_fd = -1;
             }
 
             // Default mode: listen on all interfaces
@@ -410,9 +401,6 @@ int run_event_loop(struct options *options) {
                     log_err(LOG_ERR, "Failed to join interface %s to IPv4 multicast group", rif->ifname);
                     goto end;
                 }
-            }
-            else {
-                rif->recv_fd = -1;
             }
         }
     }
@@ -492,6 +480,10 @@ int run_event_loop(struct options *options) {
                 for (struct reflection_if *dst_rif = rif->zone->first_if; dst_rif; dst_rif = dst_rif->next) {
                     if (dst_rif == rif)
                         continue;
+                    if (dst_rif->send_fd == -1) {
+                        log_msg(LOG_DEBUG, "skipping forwarding to interface %s", dst_rif->ifname);
+                        continue;
+                    }
                     if (peer_addr.ss_family == AF_INET6)
                         sa_group6.sin6_scope_id = dst_rif->ifindex;
                     log_msg(LOG_INFO, "forwarding to interface %s", dst_rif->ifname);
